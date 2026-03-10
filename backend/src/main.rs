@@ -1,41 +1,42 @@
-use axum::{
-    routing::{get, post},
-    Router,
-    Json,
-};
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use tower_http::cors::CorsLayer;
+mod config;
+mod db;
+mod errors;
+mod handlers;
+mod middleware;
+mod models;
+mod routes;
 
-#[derive(Serialize)]
-struct HealthResponse {
-    status: String,
-    service: String,
-}
+use std::net::SocketAddr;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
+
+pub use config::Config;
+pub use db::AppState;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     tracing_subscriber::fmt::init();
+    dotenvy::dotenv().ok();
 
-    let app = Router::new()
-        .route("/", get(root))
-        .route("/health", get(health))
-        .layer(CorsLayer::permissive());
+    let config = Config::from_env()?;
+    let state = AppState::new(&config.database_url).await?;
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    state.run_migrations().await?;
+
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
+    let app = routes::build_router(state)
+        .layer(TraceLayer::new_for_http())
+        .layer(cors);
+
+    let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
     tracing::info!("HamR Account Server listening on {}", addr);
-    
-    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
 
-async fn root() -> &'static str {
-    "HamR Account Center API v1.0"
-}
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
 
-async fn health() -> Json<HealthResponse> {
-    Json(HealthResponse {
-        status: "ok".to_string(),
-        service: "hamr-account".to_string(),
-    })
+    Ok(())
 }
