@@ -20,9 +20,15 @@ services:
     environment:
       DATABASE_URL: postgresql://hamr:${DB_PASSWORD:-changeme}@db:5432/hamr_account
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      RUST_LOG: info
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-86400}
+      REFRESH_TOKEN_EXPIRES_IN: ${REFRESH_TOKEN_EXPIRES_IN:-2592000}
+      PORT: ${PORT:-3001}
+      RUST_LOG: ${RUST_LOG:-info}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+    volumes:
+      - ./backend/migrations:/app/migrations:ro
     ports:
-      - "3001:3001"
+      - "${PORT:-3001}:${PORT:-3001}"
     depends_on:
       db:
         condition: service_healthy

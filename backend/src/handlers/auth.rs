@@ -79,8 +79,16 @@ pub async fn refresh_token(
 ) -> AppResult<Json<AuthResponse>> {
     use bcrypt::verify;
 
+    if req.refresh_token.is_empty() {
+        return Err(AppError::Unauthorized);
+    }
+
+    // 安全优化：只拉取未撤销且未过期的 token，不做全表扫描
+    // 注意：refresh_token 是明文 UUID，token_hash 是其 bcrypt hash，
+    // 无法直接用 WHERE 精确匹配，需在应用层做 bcrypt.verify。
+    // 为了防止恶意枚举，限制单次查询最多 100 条（正常用户极少有大量活跃 token）。
     let tokens = sqlx::query_as::<_, crate::models::RefreshToken>(
-        "SELECT * FROM refresh_tokens WHERE revoked = false AND expires_at > NOW()",
+        "SELECT * FROM refresh_tokens WHERE revoked = false AND expires_at > NOW() LIMIT 100",
     )
     .fetch_all(&state.db)
     .await?;

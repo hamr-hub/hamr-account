@@ -7,6 +7,9 @@ pub struct Config {
     pub jwt_expires_in: i64,
     pub refresh_token_expires_in: i64,
     pub port: u16,
+    /// 允许跨域的来源列表，从 ALLOWED_ORIGINS 环境变量读取（逗号分隔）
+    /// 示例: ALLOWED_ORIGINS=http://localhost:3000,https://account.hamr.store
+    pub allowed_origins: Vec<String>,
 }
 
 impl Config {
@@ -28,6 +31,12 @@ impl Config {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(3001),
+            allowed_origins: std::env::var("ALLOWED_ORIGINS")
+                .unwrap_or_else(|_| "http://localhost:3000".to_string())
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect(),
         })
     }
 }

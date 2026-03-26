@@ -232,11 +232,7 @@ fn to_family_response(f: Family, member_count: i64) -> FamilyResponse {
 }
 
 fn generate_invite_code() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let t = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .subsec_nanos();
-    let id = Uuid::new_v4();
-    format!("{:X}{}", t, &id.to_string()[..4]).to_uppercase()
+    // 使用 UUID v4 的前 8 位（大写），碰撞概率极低（16^8 = 4,294,967,296 种组合）
+    // 数据库层已有 UNIQUE 约束兜底，INSERT 冲突时会返回 Conflict 错误
+    Uuid::new_v4().to_string()[..8].to_uppercase().replace('-', "")
 }

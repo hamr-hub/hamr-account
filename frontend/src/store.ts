@@ -102,7 +102,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
     try {
       await api.put('/users/password', { old_password: oldPassword, new_password: newPassword })
-      set({ loading: false })
+      // 密码修改成功后撤销所有 refresh_token（后端已执行），清空本地凭证并跳转登录
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      set({ user: null, loading: false })
+      window.location.href = '/login'
     } catch (e: unknown) {
       const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Password change failed'
       set({ error: msg, loading: false })
