@@ -1,2 +1,6 @@
 /target
 .env
+
+# Antigravity CLI and Scratch
+.gemini/
+scratch/
